@@ -2,3 +2,4 @@
 /.idea/workspace.xml
 /venv/*
 /.idea/*
+db.sqlite3
