@@ -37,22 +37,44 @@ def dbclose(conn):
     conn.close()
 
 
+class Table(tk.Frame):
+    def __init__(self, master, data=(())):
+        tk.Frame.__init__(self, master)
+        self.rows = len(data)
+        self.columns = len(data[0])
+        for row in range(self.rows):
+            for column in range(self.columns):
+                self.cell = tk.Label(self, text="%s" % (data[row][column]), relief=tk.SUNKEN, borderwidth=1,
+                                     bg="white", width=13, anchor=tk.W)
+                self.cell.grid(row=row, column=column, padx=1, pady=1)
+
+
+
 class Application(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
         self.grid()
+
+        # connect
         self.conn = sqlite3.connect(DB_NAME)
         self.cursor = self.conn.cursor()
+
+        # show data
+        self.data = self.cursor.execute("SELECT date, value FROM hot_water_data ORDER BY id DESC LIMIT 10").fetchall()
+        self.table_hot = Table(self, self.data)
+        self.table_hot.grid(row=0, column=0, rowspan=3, sticky=tk.W, padx=3, pady=3)
+
+        # insert data
         self.b_insert_hot_water = tk.Button(self, text="Insert Hot", width=12,
                                          command=lambda: self.new_window_hot(InsertWindow))
-        self.b_insert_hot_water.grid(row=0, column=1, sticky=tk.N+tk.S, padx=3, pady=3)
+        self.b_insert_hot_water.grid(row=0, column=1, sticky=tk.E, padx=3, pady=3)
         self.b_insert_cold_water = tk.Button(self, text="Insert Cold", width=12,
                                           command=lambda: self.new_window_cold(InsertWindow))
-        self.b_insert_cold_water.grid(row=1, column=1, sticky=tk.N+tk.S, padx=3, pady=3)
+        self.b_insert_cold_water.grid(row=1, column=1, sticky=tk.E, padx=3, pady=3)
         self.b_insert_electricity = tk.Button(self, text="Insert Electricity", width=12,
                                            command=lambda: self.new_window_electricity(InsertWindow))
-        self.b_insert_electricity.grid(row=3, column=1, sticky=tk.N+tk.S, padx=3, pady=3)
+        self.b_insert_electricity.grid(row=2, column=1, sticky=tk.E, padx=3, pady=3)
 
     def new_window_hot(self, _class):
         self.target = "hot"
