@@ -99,40 +99,42 @@ class InsertWindow(tk.Frame):
         self.inbox = tk.Entry(self)
         self.inbox.grid(row=0, column=1, padx=3, pady=3)
 
-    def db_insert_hot_water(self):
+    def validation_insert(self):
         try:
-            self.tmp = float(self.inbox.get())
+            self.tmp_value = float(self.inbox.get())
         except ValueError:
             self.errorLabel = tk.Label(self, text="Error, enter right digit")
             self.errorLabel.grid(row=1, columnspan=2)
+            return False
+        self.tmp_value_old = float(self.cursor.execute("SELECT value FROM hot_water_data ORDER BY id DESC LIMIT 1").fetchone()[0])
+        if self.tmp_value_old >= self.tmp_value:
+            self.errorLabel = tk.Label(self, text="Error, too small value")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return False
+        return True
+
+    def db_insert_hot_water(self):
+        if self.validation_insert() is False:
             return 0
-        self.data.append(str(self.tmp))
+        self.data.append(str(self.tmp_value))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO hot_water_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
         self.master.destroy()
 
     def db_insert_cold_water(self):
-        try:
-            self.tmp = float(self.inbox.get())
-        except ValueError:
-            self.errorLabel = tk.Label(self, text="Error, enter right digit")
-            self.errorLabel.grid(row=1, columnspan=2)
+        if self.validation_insert() is False:
             return 0
-        self.data.append(str(self.tmp))
+        self.data.append(str(self.tmp_value))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO cold_water_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
         self.master.destroy()
 
     def db_insert_electricity(self):
-        try:
-            self.tmp = float(self.inbox.get())
-        except ValueError:
-            self.errorLabel = tk.Label(self, text="Error, enter right digit")
-            self.errorLabel.grid(row=1, columnspan=2)
+        if self.validation_insert() is False:
             return 0
-        self.data.append(str(self.tmp))
+        self.data.append(str(self.tmp_value))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO electricity_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
