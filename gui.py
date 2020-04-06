@@ -1,9 +1,40 @@
 import tkinter as tk
 import sqlite3
 from datetime import datetime
+import os.path
 
 
 DB_NAME = "db.sqlite3"
+
+
+def init(conn, cursor):
+    cursor.execute("CREATE TABLE hot_water_data "
+                   "(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                   "value TEXT NOT NULL,"
+                   "date TEXT NOT NULL)")
+    conn.commit()
+
+    cursor.execute("CREATE TABLE cold_water_data "
+                   "(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                   "value TEXT NOT NULL,"
+                   "date TEXT NOT NULL)")
+    conn.commit()
+
+    cursor.execute("CREATE TABLE electricity_data "
+                   "(id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                   "value TEXT NOT NULL,"
+                   "date TEXT NOT NULL)")
+    conn.commit()
+
+
+def dbconn():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    return (conn, cursor)
+
+
+def dbclose(conn):
+    conn.close()
 
 
 class Application(tk.Frame):
@@ -69,21 +100,39 @@ class InsertWindow(tk.Frame):
         self.inbox.grid(row=0, column=1, padx=3, pady=3)
 
     def db_insert_hot_water(self):
-        self.data.append(str(float(self.inbox.get())))
+        try:
+            self.tmp = float(self.inbox.get())
+        except ValueError:
+            self.errorLabel = tk.Label(self, text="Error, enter right digit")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return 0
+        self.data.append(str(self.tmp))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO hot_water_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
         self.master.destroy()
 
     def db_insert_cold_water(self):
-        self.data.append(str(float(self.inbox.get())))
+        try:
+            self.tmp = float(self.inbox.get())
+        except ValueError:
+            self.errorLabel = tk.Label(self, text="Error, enter right digit")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return 0
+        self.data.append(str(self.tmp))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO cold_water_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
         self.master.destroy()
 
     def db_insert_electricity(self):
-        self.data.append(str(float(self.inbox.get())))
+        try:
+            self.tmp = float(self.inbox.get())
+        except ValueError:
+            self.errorLabel = tk.Label(self, text="Error, enter right digit")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return 0
+        self.data.append(str(self.tmp))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.cursor.execute("INSERT INTO electricity_data (value, date) VALUES (?, ?)", self.data)
         self.conn.commit()
@@ -91,6 +140,13 @@ class InsertWindow(tk.Frame):
 
 
 def gui_main():
+
+    if not os.path.exists(DB_NAME):
+        conn, cursor = dbconn()
+        init(conn, cursor)
+        dbclose(conn)
+
+
     root = tk.Tk()
     root.title("Utility Cost Data")
     root.resizable(width=False, height=False)
