@@ -49,29 +49,35 @@ def dbclose(conn):
 
 
 class Table(tk.Frame):
-    def __init__(self, master, data=(())):
+    def __init__(self, master=None, data=(()), target=None, conn=None, cursor=None):
         tk.Frame.__init__(self, master)
+        self.exist_edit_window = False
         self.rows = len(data)
-        self.columns = len(data[0])
-
+        self.conn = conn
+        self.cursor = cursor
+        if len(data) != 0:
+            self.columns = len(data[0])
+        self.cell = [[0]*2]*len(data)
         for row in range(self.rows):
             for column in range(self.columns):
-                self.cell = tk.Label(self, text="%s" % (data[row][column]), relief=tk.SUNKEN, borderwidth=1,
-                                     bg="white", width=13, anchor=tk.W)
+                if column == 0:
+                    id = data[row][column]
+                    continue
+                self.cell[row][column-1] = tk.Label(self, text="%s" % (data[row][column]),
+                                                    relief=tk.SUNKEN, borderwidth=1,
+                                                    bg="white", width=13, anchor=tk.W)
+                if column == 2:
+                    self.cell[row][column-1].bind("<Button-1>",
+                                                  lambda x, id=id:self.new_window_edit(InsertWindow,
+                                                                                       master, target, id))
+                self.cell[row][column-1].grid(row=row, column=column, padx=1, pady=1)
 
-                # value_var = tk.StringVar()
-                # value_var.set(str(data[row][column]))
-                # self.cell = tk.Entry(self, state="readonly", textvariable=value_var, width=13)
-
-#                if column == 1:
-#                    self.cell.bind("<Button-1>", self.label_bind)
-
-                self.cell.grid(row=row, column=column, padx=1, pady=1)
-
-# don't know, but it's working
-#    def label_bind(self, *args):
-#        self.aae = tk.Label(self, text="ssaxca")
-#        self.aae.grid(row=0)
+    def new_window_edit(self, _class, master, target, id, *args):
+        self.newWindow = tk.Toplevel(self.master)
+        self.newWindow.title("Edit Data")
+        self.newWindow.resizable(width=False, height=False)
+        command = "E"
+        _class(self.newWindow, master, command, self.conn, self.cursor, target, id)
 
 
 class Application(tk.Frame):
@@ -85,20 +91,20 @@ class Application(tk.Frame):
         self.cursor = self.conn.cursor()
 
         # show data
-        self.data = self.cursor.execute("SELECT date, value FROM {0} "
+        self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(HOT_WATER_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
-        self.table_hot = Table(self, self.data)
+        self.table_hot = Table(self, self.data, HOT_WATER_TARGET, self.conn, self.cursor)
         self.table_hot.grid(row=0, column=0, rowspan=3, sticky=tk.W, padx=3, pady=3)
-        self.data = self.cursor.execute("SELECT date, value FROM {0} "
+        self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(COLD_WATER_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
-        self.table_cold = Table(self, self.data)
+        self.table_cold = Table(self, self.data, COLD_WATER_TARGET, self.conn, self.cursor)
         self.table_cold.grid(row=0, column=1, rowspan=3, sticky=tk.W, padx=3, pady=3)
-        self.data = self.cursor.execute("SELECT date, value FROM {0} "
+        self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(ELECTRICITY_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
-        self.table_electricity = Table(self, self.data)
+        self.table_electricity = Table(self, self.data, ELECTRICITY_TARGET, self.conn, self.cursor)
         self.table_electricity.grid(row=0, column=2, rowspan=3, sticky=tk.W, padx=3, pady=3)
 
         # insert data
@@ -114,8 +120,14 @@ class Application(tk.Frame):
         self.b_insert_electricity.grid(row=2, column=3, sticky=tk.E, padx=3, pady=3)
 
     def update_table(self, type):
-        data = self.cursor.execute("SELECT date, value FROM {0} ORDER BY id DESC LIMIT 10".format(type)).fetchall()
-        self.table = Table(self, data)
+        data = self.cursor.execute("SELECT id, date, value FROM {0} ORDER BY id DESC LIMIT 10".format(type)).fetchall()
+        if type == HOT_WATER_TABLE:
+            target = HOT_WATER_TARGET
+        elif type == COLD_WATER_TABLE:
+            target = COLD_WATER_TARGET
+        elif type == ELECTRICITY_TABLE:
+            target = ELECTRICITY_TARGET
+        self.table = Table(self, data, target, self.conn, self.cursor)
         tmp_column = -1
         if type == HOT_WATER_TABLE:
             tmp_column = 0
@@ -138,60 +150,118 @@ class Application(tk.Frame):
             # self.newWindow.geometry("250x75")
             self.newWindow.resizable(width=False, height=False)
             self.newWindow.protocol("WM_DELETE_WINDOW", self.delete_insert_window)
-            _class(self.newWindow, self.conn, self.cursor, target, self)
+            command = "I"
+            _class(self.newWindow, self, command, self.conn, self.cursor, target)
             self.exist_insert_window = True
 
 
 class InsertWindow(tk.Frame):
-    def __init__(self, master=None, conn=None, cursor=None, target=None, obj=None):
+    def __init__(self, master=None, obj=None, command="I", conn=None, cursor=None, target=None, id=None):
         super().__init__(master)
         self.master = master
-        self.conn = conn
-        self.cursor = cursor
+        if conn is None or cursor is None and obj is not None:
+            self.conn = obj.conn
+            self.cursor = obj.cursor
+        else:
+            self.conn = conn
+            self.cursor = cursor
         self.target = target
         self.grid()
         self.data = list()
         self.b_insert = tk.Button(self, text="Enter", width=12)
         if self.target == HOT_WATER_TARGET:
-            type_insert = HOT_WATER_TABLE
-            self.b_insert["command"] = lambda: self.db_insert_data(obj, type_insert)
+            table = HOT_WATER_TABLE
+            if command == "I":
+                self.b_insert["command"] = lambda: self.db_insert_data(obj, table)
+            elif command == "E":
+                self.b_insert["command"] = lambda: self.db_edit_data(obj, table, id)
         elif self.target == COLD_WATER_TARGET:
-            type_insert = COLD_WATER_TABLE
-            self.b_insert["command"] = lambda: self.db_insert_data(obj, type_insert)
+            table = COLD_WATER_TABLE
+            if command == "I":
+                self.b_insert["command"] = lambda: self.db_insert_data(obj, table)
+            elif command == "E":
+                self.b_insert["command"] = lambda: self.db_edit_data(obj, table, id)
         elif self.target == ELECTRICITY_TARGET:
-            type_insert = ELECTRICITY_TABLE
-            self.b_insert["command"] = lambda: self.db_insert_data(obj, type_insert)
+            table = ELECTRICITY_TABLE
+            if command == "I":
+                self.b_insert["command"] = lambda: self.db_insert_data(obj, table)
+            elif command == "E":
+                self.b_insert["command"] = lambda: self.db_edit_data(obj, table, id)
         self.b_insert.grid(row=0, padx=3, pady=3)
         self.inbox = tk.Entry(self)
         self.inbox.grid(row=0, column=1, padx=3, pady=3)
         self.inbox.focus()
 
-    def validation_insert(self, type):
+    def validation_insert(self, table):
         try:
             self.tmp_value = float(self.inbox.get())
         except ValueError:
             self.errorLabel = tk.Label(self, text="Error, enter right digit")
             self.errorLabel.grid(row=1, columnspan=2)
             return False
-        self.tmp_value_old = float(self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 1".format(type)).fetchone()[0])
+        try:
+            self.tmp_value_old = float(self.cursor.execute("SELECT value FROM {0} "
+                                                           "ORDER BY id DESC LIMIT 1".format(table)).fetchone()[0])
+        except TypeError:
+            self.tmp_value_old = 0
+
         if self.tmp_value_old >= self.tmp_value:
             self.errorLabel = tk.Label(self, text="Error, too small value")
             self.errorLabel.grid(row=1, columnspan=2)
             return False
         return True
 
-    def db_insert_data(self, obj, type):
-        if self.validation_insert(type) is False:
+    def validation_edit(self, table, id):
+        try:
+            self.tmp_value = float(self.inbox.get())
+        except ValueError:
+            self.errorLabel = tk.Label(self, text="Error, enter right digit")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return False
+
+        try:
+            self.tmp_value_up = float(self.cursor.execute("SELECT value FROM {0} WHERE id > (?) "
+                                                          "ORDER BY id ASC LIMIT 1".format(table), (str(id),)).fetchone()[0])
+        except TypeError:
+            self.tmp_value_up = -1
+
+        try:
+            self.tmp_value_down = float(self.cursor.execute("SELECT value FROM {0} WHERE id < (?) "
+                                                            "ORDER BY id DESC LIMIT 1".format(table), (str(id),)).fetchone()[0])
+        except TypeError:
+            self.tmp_value_down = -1
+
+        if self.tmp_value_up == -1 and (self.tmp_value_down == -1 or self.tmp_value_down < self.tmp_value) \
+                or self.tmp_value_down == -1 and self.tmp_value_up > self.tmp_value \
+                or self.tmp_value_down < self.tmp_value < self.tmp_value_up:
+            return True
+        else:
+            self.errorLabel = tk.Label(self, text="Error, enter small or big digit")
+            self.errorLabel.grid(row=1, columnspan=2)
+            return False
+
+    def db_insert_data(self, obj, table):
+        if self.validation_insert(table) is False:
             return 0
         self.data.append(str(self.tmp_value))
         self.data.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
-        self.cursor.execute("INSERT INTO {0} (value, date) VALUES (?, ?)".format(type), self.data)
+        self.cursor.execute("INSERT INTO {0} (value, date) VALUES (?, ?)".format(table), self.data)
         self.conn.commit()
-        obj.update_table(type)
+        obj.update_table(table)
+        self.master.destroy()
+
+    def db_edit_data(self, obj, table, id):
+        if self.validation_edit(table, id) is False:
+            return 0
+        self.cursor.execute("UPDATE {0} SET value = (?) WHERE id = (?)".format(table), (str(self.tmp_value), id))
+        self.conn.commit()
+        obj.update_table(table)
         self.master.destroy()
 
 
+
 def gui_main():
+
     if not os.path.exists(DB_NAME):
         conn, cursor = dbconn()
         init(conn, cursor)
