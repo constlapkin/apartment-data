@@ -19,6 +19,12 @@ ELECTRICITY_TARGET = "electricity"
 
 
 def init(conn, cursor):
+    """
+    Creating tables for empty database
+    :param conn: Connection object database
+    :param cursor: Cursor object database
+    :return:
+    """
     cursor.execute("CREATE TABLE {0} "
                    "(id INTEGER PRIMARY KEY AUTOINCREMENT,"
                    "value TEXT NOT NULL,"
@@ -39,16 +45,34 @@ def init(conn, cursor):
 
 
 def dbconn():
+    """
+    Create sqlite3 database. Initialize connection and cursor for sqlite3 database
+    :return (conn, cursor):
+    """
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     return (conn, cursor)
 
 
 def dbclose(conn):
+    """
+    Close database connection
+    :param conn: Connection object database
+    :return:
+    """
     conn.close()
 
 
 class Table(tk.Frame):
+    """
+    Class for table widget. It's creating label-based table.
+    :param master: It's object tkinter
+    :param data: Data would be insert into table
+    :param target: Target table for edit in database
+    :param conn: Connection object database
+    :param cursor: Cursor object database
+    :return:
+    """
     def __init__(self, master=None, data=(()), target=None, conn=None, cursor=None):
         tk.Frame.__init__(self, master)
         self.exist_edit_window = False
@@ -73,6 +97,15 @@ class Table(tk.Frame):
                 self.cell[row][column-1].grid(row=row, column=column, padx=1, pady=1)
 
     def new_window_edit(self, _class, master, target, id, *args):
+        """
+        Create window for edit data
+        :param _class: class new window
+        :param master: main object tkinter
+        :param target:
+        :param id: id row in database
+        :param args: for bind (event)
+        :return:
+        """
         self.newWindow = tk.Toplevel(self.master)
         self.newWindow.title("Edit Data")
         self.newWindow.resizable(width=False, height=False)
@@ -120,6 +153,11 @@ class Application(tk.Frame):
         self.b_insert_electricity.grid(row=2, column=3, sticky=tk.E, padx=3, pady=3)
 
     def update_table(self, type):
+        """
+        Initialize update table after commit changes or inserting data
+        :param type:
+        :return:
+        """
         data = self.cursor.execute("SELECT id, date, value FROM {0} ORDER BY id DESC LIMIT 10".format(type)).fetchall()
         if type == HOT_WATER_TABLE:
             target = HOT_WATER_TARGET
@@ -140,10 +178,21 @@ class Application(tk.Frame):
         self.exist_insert_window = False
 
     def delete_insert_window(self):
+        """
+        Changes flag for creating only one window.
+        Destroyed window
+        :return:
+        """
         self.exist_insert_window = False
         self.newWindow.destroy()
 
     def new_window_insert(self, _class, target):
+        """
+        Create window for insert data
+        :param _class:
+        :param target:
+        :return:
+        """
         if self.exist_insert_window is not True:
             self.newWindow = tk.Toplevel(self.master)
             self.newWindow.title("Insert Data")
@@ -156,6 +205,17 @@ class Application(tk.Frame):
 
 
 class InsertWindow(tk.Frame):
+    """
+    Creating new window for edit or insert new data to database.
+    :param master:
+    :param obj: main object tkinter
+    :param command: for define type of operation - insert or edit ("I" / "E")
+    :param conn:
+    :param cursor:
+    :param target:
+    :param id: only for edit data
+    :return:
+    """
     def __init__(self, master=None, obj=None, command="I", conn=None, cursor=None, target=None, id=None):
         super().__init__(master)
         self.master = master
@@ -193,6 +253,11 @@ class InsertWindow(tk.Frame):
         self.inbox.focus()
 
     def validation_insert(self, table):
+        """
+        Validate insert data (by type and value)
+        :param table:
+        :return:
+        """
         try:
             self.tmp_value = float(self.inbox.get())
         except ValueError:
@@ -212,6 +277,12 @@ class InsertWindow(tk.Frame):
         return True
 
     def validation_edit(self, table, id):
+        """
+        Validate edit data (by type and value)
+        :param table:
+        :param id:
+        :return:
+        """
         try:
             self.tmp_value = float(self.inbox.get())
         except ValueError:
@@ -241,6 +312,12 @@ class InsertWindow(tk.Frame):
             return False
 
     def db_insert_data(self, obj, table):
+        """
+        Calls validation_insert function and if return True - insert data into database
+        :param obj:
+        :param table:
+        :return:
+        """
         if self.validation_insert(table) is False:
             return 0
         self.data.append(str(self.tmp_value))
@@ -251,6 +328,13 @@ class InsertWindow(tk.Frame):
         self.master.destroy()
 
     def db_edit_data(self, obj, table, id):
+        """
+        Calls validation_edit function and if return True - edit and commit data into database
+        :param obj:
+        :param table:
+        :param id:
+        :return:
+        """
         if self.validation_edit(table, id) is False:
             return 0
         self.cursor.execute("UPDATE {0} SET value = (?) WHERE id = (?)".format(table), (str(self.tmp_value), id))
@@ -261,7 +345,9 @@ class InsertWindow(tk.Frame):
 
 
 def gui_main():
-
+    # TODO:
+    #  Make rows deletable
+    #  Отбить переменную проверку созданного окна
     if not os.path.exists(DB_NAME):
         conn, cursor = dbconn()
         init(conn, cursor)
