@@ -7,7 +7,7 @@ import os.path
 DB_NAME = "db.sqlite3"
 
 ORDER_TABLE = "DESC"
-LIMIT_TABLE = "10"
+LIMIT_TABLE = "12"
 
 HOT_WATER_TABLE = "hot_water_data"
 COLD_WATER_TABLE = "cold_water_data"
@@ -124,33 +124,90 @@ class Application(tk.Frame):
         self.cursor = self.conn.cursor()
 
         # show data
+        self.l_table_hot = tk.Label(self, text="Hot water data")
+        self.l_table_hot.grid(row=0, column=0, sticky=tk.W+tk.E)
         self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(HOT_WATER_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
         self.table_hot = Table(self, self.data, HOT_WATER_TARGET, self.conn, self.cursor)
-        self.table_hot.grid(row=0, column=0, rowspan=3, sticky=tk.W, padx=3, pady=3)
+        self.table_hot.grid(row=1, column=0, rowspan=9, sticky=tk.W, padx=1, pady=1)
+        self.l_table_cold = tk.Label(self, text="Cold water data")
+        self.l_table_cold.grid(row=0, column=1, sticky=tk.W+tk.E)
         self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(COLD_WATER_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
         self.table_cold = Table(self, self.data, COLD_WATER_TARGET, self.conn, self.cursor)
-        self.table_cold.grid(row=0, column=1, rowspan=3, sticky=tk.W, padx=3, pady=3)
+        self.table_cold.grid(row=1, column=1, rowspan=9, sticky=tk.W, padx=1, pady=1)
+        self.l_table_electricity = tk.Label(self, text="Electricity data")
+        self.l_table_electricity.grid(row=0, column=2, sticky=tk.W+tk.E)
         self.data = self.cursor.execute("SELECT id, date, value FROM {0} "
                                         "ORDER BY id {1} "
                                         "LIMIT {2}".format(ELECTRICITY_TABLE, ORDER_TABLE, LIMIT_TABLE)).fetchall()
         self.table_electricity = Table(self, self.data, ELECTRICITY_TARGET, self.conn, self.cursor)
-        self.table_electricity.grid(row=0, column=2, rowspan=3, sticky=tk.W, padx=3, pady=3)
+        self.table_electricity.grid(row=1, column=2, rowspan=9, sticky=tk.W, padx=1, pady=1)
+
+
+        # show average data
+        self.l_average_hot_name = tk.Label(self, text="Average hot")
+        self.l_average_hot_name.grid(row=4, column=3, sticky=tk.W, padx=1, pady=1)
+        average_hot = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(HOT_WATER_TABLE)).fetchone()[0]), 2)
+        self.l_average_hot = tk.Label(self, text=average_hot)
+        self.l_average_hot.grid(row=4, column=4, sticky=tk.W, padx=1, pady=1)
+
+        self.l_average_cold_name = tk.Label(self, text="Average cold")
+        self.l_average_cold_name.grid(row=5, column=3, sticky=tk.W, padx=1, pady=1)
+        average_cold = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(COLD_WATER_TABLE)).fetchone()[0]), 2)
+        self.l_average_cold = tk.Label(self, text=average_cold)
+        self.l_average_cold.grid(row=5, column=4, sticky=tk.W, padx=1, pady=1)
+
+        self.l_average_electricity_name = tk.Label(self, text="Average elec")
+        self.l_average_electricity_name.grid(row=6, column=3, sticky=tk.W, padx=1, pady=1)
+        average_electricity = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(ELECTRICITY_TABLE)).fetchone()[0]), 2)
+        self.l_average_electricity = tk.Label(self, text=average_electricity)
+        self.l_average_electricity.grid(row=6, column=4, sticky=tk.W, padx=1, pady=1)
+
+        # show diff data
+        self.l_diff_hot_name = tk.Label(self, text="Diff month hot")
+        self.l_diff_hot_name.grid(row=7, column=3, sticky=tk.W, padx=1, pady=1)
+        diff_hot = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(HOT_WATER_TABLE)).fetchall()
+        if len(diff_hot) == 2:
+            diff_hot = str(round(float(diff_hot[0][0]) - float(diff_hot[1][0]), 2))
+        else:
+            diff_hot = diff_hot[0][0]
+        self.l_diff_hot = tk.Label(self, text=diff_hot)
+        self.l_diff_hot.grid(row=7, column=4, sticky=tk.W, padx=1, pady=1)
+
+        self.l_diff_cold_name = tk.Label(self, text="Diff month cold")
+        self.l_diff_cold_name.grid(row=8, column=3, sticky=tk.W, padx=1, pady=1)
+        diff_cold = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(COLD_WATER_TABLE)).fetchall()
+        if len(diff_cold) == 2:
+            diff_cold = str(round(float(diff_cold[0][0]) - float(diff_cold[1][0]), 2))
+        else:
+            diff_cold = diff_cold[0][0]
+        self.l_diff_cold = tk.Label(self, text=diff_cold)
+        self.l_diff_cold.grid(row=8, column=4, sticky=tk.W, padx=1, pady=1)
+
+        self.l_diff_electricity_name = tk.Label(self, text="Diff month elec")
+        self.l_diff_electricity_name.grid(row=9, column=3, sticky=tk.W, padx=1, pady=1)
+        diff_electricity = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(ELECTRICITY_TABLE)).fetchall()
+        if len(diff_electricity) == 2:
+            diff_electricity = str(round(float(diff_electricity[0][0]) - float(diff_electricity[1][0]), 2))
+        else:
+            diff_electricity = diff_electricity[0][0]
+        self.l_diff_electricity = tk.Label(self, text=diff_electricity)
+        self.l_diff_electricity.grid(row=9, column=4, sticky=tk.W, padx=1, pady=1)
 
         # insert data
         self.exist_insert_window = False
-        self.b_insert_hot_water = tk.Button(self, text="Insert Hot", width=12,
+        self.b_insert_hot_water = tk.Button(self, text="Insert Hot", width=15,
                                             command=lambda: self.new_window_insert(InsertWindow, HOT_WATER_TARGET))
-        self.b_insert_hot_water.grid(row=0, column=3, sticky=tk.E, padx=3, pady=3)
-        self.b_insert_cold_water = tk.Button(self, text="Insert Cold", width=12,
+        self.b_insert_hot_water.grid(row=1, column=3, columnspan=2, sticky=tk.W+tk.E, padx=2, pady=2)
+        self.b_insert_cold_water = tk.Button(self, text="Insert Cold", width=15,
                                              command=lambda: self.new_window_insert(InsertWindow, COLD_WATER_TARGET))
-        self.b_insert_cold_water.grid(row=1, column=3, sticky=tk.E, padx=3, pady=3)
-        self.b_insert_electricity = tk.Button(self, text="Insert Electricity", width=12,
+        self.b_insert_cold_water.grid(row=2, column=3, columnspan=2, sticky=tk.W+tk.E, padx=2, pady=2)
+        self.b_insert_electricity = tk.Button(self, text="Insert Electricity", width=15,
                                               command=lambda: self.new_window_insert(InsertWindow, ELECTRICITY_TARGET))
-        self.b_insert_electricity.grid(row=2, column=3, sticky=tk.E, padx=3, pady=3)
+        self.b_insert_electricity.grid(row=3, column=3, columnspan=2, sticky=tk.W+tk.E, padx=2, pady=2)
 
     def update_table(self, type):
         """
@@ -158,7 +215,7 @@ class Application(tk.Frame):
         :param type:
         :return:
         """
-        data = self.cursor.execute("SELECT id, date, value FROM {0} ORDER BY id DESC LIMIT 10".format(type)).fetchall()
+        data = self.cursor.execute("SELECT id, date, value FROM {0} ORDER BY id DESC LIMIT {1}".format(type, LIMIT_TABLE)).fetchall()
         if type == HOT_WATER_TABLE:
             target = HOT_WATER_TARGET
         elif type == COLD_WATER_TABLE:
@@ -174,8 +231,53 @@ class Application(tk.Frame):
         elif type == ELECTRICITY_TABLE:
             tmp_column = 2
         if tmp_column >= 0:
-            self.table.grid(row=0, column=tmp_column, rowspan=3, sticky=tk.W, padx=3, pady=3)
+            self.table.grid(row=1, column=tmp_column, rowspan=9, sticky=tk.W, padx=1, pady=1)
         self.exist_insert_window = False
+
+    def update_variables(self):
+        """
+        Initialize update variables like diff and average after commit changes or inserting data
+        :param:
+        :return:
+        """
+        average_hot = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(HOT_WATER_TABLE)).fetchone()[0]), 2)
+        self.l_average_hot = tk.Label(self, text=average_hot)
+        self.l_average_hot.grid(row=4, column=4, sticky=tk.W, padx=1, pady=1)
+
+        average_cold = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(COLD_WATER_TABLE)).fetchone()[0]), 2)
+        self.l_average_cold = tk.Label(self, text=average_cold)
+        self.l_average_cold.grid(row=5, column=4, sticky=tk.W, padx=1, pady=1)
+
+        average_electricity = round(float(self.cursor.execute("SELECT AVG(value) FROM {0}".format(ELECTRICITY_TABLE)).fetchone()[0]), 2)
+        self.l_average_electricity = tk.Label(self, text=average_electricity)
+        self.l_average_electricity.grid(row=6, column=4, sticky=tk.W, padx=1, pady=1)
+
+
+        diff_hot = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(HOT_WATER_TABLE)).fetchall()
+        if len(diff_hot) == 2:
+            diff_hot = str(round(float(diff_hot[0][0]) - float(diff_hot[1][0]), 2))
+        else:
+            diff_hot = diff_hot[0][0]
+        self.l_diff_hot = tk.Label(self, text=diff_hot)
+        self.l_diff_hot.grid(row=7, column=4, sticky=tk.W, padx=1, pady=1)
+
+        diff_cold = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(COLD_WATER_TABLE)).fetchall()
+        if len(diff_cold) == 2:
+            diff_cold = str(round(float(diff_cold[0][0]) - float(diff_cold[1][0]), 2))
+        else:
+            diff_cold = diff_cold[0][0]
+        self.l_diff_cold = tk.Label(self, text=diff_cold)
+        self.l_diff_cold.grid(row=8, column=4, sticky=tk.W, padx=1, pady=1)
+
+        diff_electricity = self.cursor.execute("SELECT value FROM {0} ORDER BY id DESC LIMIT 2".format(ELECTRICITY_TABLE)).fetchall()
+        if len(diff_electricity) == 2:
+            diff_electricity = str(round(float(diff_electricity[0][0]) - float(diff_electricity[1][0]), 2))
+        else:
+            diff_electricity = diff_electricity[0][0]
+        self.l_diff_electricity = tk.Label(self, text=diff_electricity)
+        self.l_diff_electricity.grid(row=9, column=4, sticky=tk.W, padx=1, pady=1)
+
+
 
     def delete_insert_window(self):
         """
@@ -325,6 +427,7 @@ class InsertWindow(tk.Frame):
         self.cursor.execute("INSERT INTO {0} (value, date) VALUES (?, ?)".format(table), self.data)
         self.conn.commit()
         obj.update_table(table)
+        obj.update_variables()
         self.master.destroy()
 
     def db_edit_data(self, obj, table, id):
@@ -340,14 +443,13 @@ class InsertWindow(tk.Frame):
         self.cursor.execute("UPDATE {0} SET value = (?) WHERE id = (?)".format(table), (str(self.tmp_value), id))
         self.conn.commit()
         obj.update_table(table)
+        obj.update_variables()
         self.master.destroy()
 
 
 
 def gui_main():
-    # TODO:
-    #  Make rows deletable
-    #  Отбить переменную проверку созданного окна
+
     if not os.path.exists(DB_NAME):
         conn, cursor = dbconn()
         init(conn, cursor)
